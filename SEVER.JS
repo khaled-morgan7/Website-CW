@@ -184,5 +184,39 @@ server.get(`/ticket/search`, (req, res) => {
             return res.json(rows)
     })
 })
+server.post('/booking', (req, res) => {
+    const { userID, origin, destination, date } = req.body;
+
+    if (!userID || !origin || !destination || !date) 
+        return res.status(400).send('Missing required fields');
+
+    db.get(`SELECT ID, QUANTITY FROM TICKET WHERE ORIGIN = ? AND DESTINATION = ? AND DATE = ?`, 
+    [origin, destination, date], (err, ticket) => {
+        if (err || !ticket || ticket.QUANTITY < 1) 
+            return res.status(400).send('No tickets available');
+
+        db.run(`INSERT INTO BOOKINGS (USER_ID, TICKET_ID) VALUES (?, ?)`, [userID, ticket.ID], (err) => {
+            if (err) return res.status(500).send('Booking failed');
+
+            db.run(`UPDATE TICKET SET QUANTITY = QUANTITY - 1 WHERE ID = ?`, [ticket.ID], (err) => {
+                return err ? res.status(500).send('Ticket update failed') : res.send('Booking successful');
+            });
+        });
+    });
+});
+
+server.get('/bookings', (req, res) => {
+    const query = `SELECT * FROM BOOKINGS`; // Query to fetch all bookings
+
+    db.all(query, (err, rows) => {
+        if (err) {
+            console.log(err); // Log the error
+            return res.status(500).send('Error retrieving bookings'); // Send error response
+        } else {
+            return res.json(rows); // Send all bookings as JSON response
+        }
+    });
+});
+
     })
 })
