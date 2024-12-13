@@ -244,5 +244,30 @@ server.delete('/bookings/:id', (req, res) => {
     });
 });
 
+server.post('/feedback', (req, res) => {
+    const userID = req.body.userID;
+    const message = req.body.message;
+    const query = `INSERT INTO FEEDBACK (USER_ID,MESSAGE ) VALUES (${userID}, '${message}')`;
+    db.run(query, (err) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).send('Error submitting feedback');
+        } else {
+            return res.send('Feedback submitted successfully');
+        }
+    });
+});
+
+server.get('/feedback', (req, res) => {
+    db.all( `SELECT * FROM FEEDBACK`,(err, row) => {
+        if (err)
+            return res.status(500).send('Error retrieving feedback');
+        // if (!row || row.ISADMIN !== 1) 
+        //     return res.status(403).send('Unauthorized: Only admins can view feedback');
+           else 
+            res.json(row);
+        });
+    });
+
     })
 })
