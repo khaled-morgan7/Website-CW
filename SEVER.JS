@@ -100,5 +100,33 @@ server.put('/user/profile', (req, res) => {
     });
 });
 
+server.delete('/tickets/:id', (req, res) => {
+    const query = `DELETE FROM TICKET WHERE ID = ${req.params.id}`;
+    db.run(query, (err) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).send('Error deleting ticket');
+        } else {
+            return res.send('Ticket deleted successfully');
+        }
+    });
+});
+
+server.post(`/ticket/add`, (req, res) => {
+    const origin = req.body.origin
+    const destination = req.body.destination
+    const date = req.body.date
+    const quantity = parseInt(req.body.quantity, 10)
+    const price = parseInt(req.body.price, 10)
+    let query = `INSERT INTO TICKET (ORIGIN, DESTINATION, DATE, QUANTITY, PRICE) VALUES ('${origin}', '${destination}', '${date}', ${quantity}, ${price})`
+    db.run(query, (err) => {
+        if (err) {
+            console.log(err)
+            return res.send(err)
+        } else {
+            return res.send(`Ticket added successfully`)
+        }
+    })
+})
     })
 })
