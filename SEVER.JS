@@ -218,5 +218,31 @@ server.get('/bookings', (req, res) => {
     });
 });
 
+server.get('/bookings/:id', (req, res) => {
+    const bookingID = req.params.id;
+    const query = `SELECT * FROM BOOKINGS WHERE ID = ${bookingID}`;
+    db.get(query, (err, row) => {
+        if (err || !row) {
+            console.log(err);
+            return res.status(404).send('Booking not found');
+        } else {
+            return res.json(row);
+        }
+    });
+});
+
+server.delete('/bookings/:id', (req, res) => {
+    const bookingID = req.params.id;
+    const query = `DELETE FROM BOOKINGS WHERE ID = ${bookingID}`;
+    db.run(query, (err) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).send('Error deleting booking');
+        } else {
+            return res.send('Booking canceled successfully');
+        }
+    });
+});
+
     })
 })
