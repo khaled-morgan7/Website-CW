@@ -152,5 +152,37 @@ server.get(`/ticket/search/:id`, (req, res) => {
     })
 })
 
+server.put(`/ticket/edit/:id/:quantity`, (req, res) => {
+    const query = `UPDATE TICKET SET QUANTITY= ${parseInt(req.params.quantity, 10)} WHERE ID = ${req.params.id}`
+    db.run(query, (err) => {
+        if (err) {
+            console.log(err)
+            return res.send(err)
+        } else
+            return res.send(`Ticket updated successfully`)
+    })
+})
+
+
+
+server.get(`/ticket/search`, (req, res) => {
+    let origin = req.query.origin
+    let destination = req.query.destination
+    let date = req.query.date
+    let query = `SELECT * FROM TICKET WHERE QUANTITY > 0`
+    if (origin)
+        query += ` AND ORIGIN='${origin}'`
+    if (destination)
+        query += ` AND DESTINATION='${destination}'`
+    if (date)
+        query += ` AND DATE='${date}'`
+    db.all(query, (err, rows) => {
+        if (err) {
+            console.log(err)
+            return res.send(err)
+        } else
+            return res.json(rows)
+    })
+})
     })
 })
