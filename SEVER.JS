@@ -69,5 +69,36 @@ server.get('/users', (req, res) => {
     });
 });
 
+server.get('/user/email', (req, res) => {
+    const email = req.query.email;  // Email passed as a query parameter
+    const query = `SELECT * FROM USER WHERE EMAIL = '${email}'`;
+    db.get(query, (err, row) => {
+        if (err) {
+            console.log(err)
+            return res.send(err)
+        }
+        else if (!row){
+            return res.send(`this id ${req.params.email} is not found) `)} 
+        
+        else 
+        {
+            return res.send(row)
+}})})
+    
+server.put('/user/profile', (req, res) => {
+    const userID = req.body.userID;
+    const name = req.body.name;
+    const email = req.body.email;
+    const query = `UPDATE USER SET NAME = '${name}', EMAIL = '${email}' WHERE ID = ${userID}`;
+    db.run(query, (err) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).send('Error updating profile');
+        } else {
+            return res.send('Profile updated successfully');
+        }
+    });
+});
+
     })
 })
