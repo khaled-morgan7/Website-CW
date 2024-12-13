@@ -1,5 +1,11 @@
 const port = 888
 server.use(express.json()) //bdl using body parser 
+const express = require('express')
+const db_access = require('./bd.js')
+const db = db_access.db
+const server = express()
+const port = 3000
+server.use(express.json()) // bdl using body parser 
 
 // for users
 // no need for '' if int
