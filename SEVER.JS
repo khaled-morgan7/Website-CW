@@ -128,5 +128,29 @@ server.post(`/ticket/add`, (req, res) => {
         }
     })
 })
+server.get(`/ticket`, (req, res) => {
+    const query = `SELECT * FROM TICKET`
+    db.all(query, (err, rows) => {
+        if (err) {
+            console.log(err)
+            return res.send(err)
+        } else
+            return res.json(rows)
+    })
+})
+
+server.get(`/ticket/search/:id`, (req, res) => {
+    const query = `SELECT * FROM TICKET WHERE ID=${req.params.id}`
+    db.get(query, (err, row) => {
+        if (err) {
+            console.log(err)
+            return res.send(err)
+        } else if (!row) {
+            return res.send(`Ticket with ID ${req.params.id} not found`)
+        } else
+            return res.send(row)
+    })
+})
+
     })
 })
