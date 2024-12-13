@@ -269,5 +269,28 @@ server.get('/feedback', (req, res) => {
         });
     });
 
+server.delete('/feedback/:id', (req, res) => {
+    const feedbackID = req.params.id; // Extract feedback ID from the URL parameter
+    const query = `DELETE FROM FEEDBACK WHERE ID = ${feedbackID}`; // SQL query to delete the feedback
+
+    db.run(query, (err) => {
+        if (err) {
+            console.log(err); // Log the error
+            return res.status(500).send('Error deleting feedback'); // Send error response
+        } else {
+            return res.send('Feedback deleted successfully'); // Send success response
+        }
+    });
+});
+
+// serialize handles multiple calls in the same process
+// calls each one separately to avoid blocking
+server.listen(port, () => {
+    console.log(`server started at port ${port}`)
+    db.serialize(() => {
+        db.exec(db_access.createTicketTable)
+        db.exec(db_access.createUserTable)
+        db.exec(db_access.createBookingTable)
+        db.exec(db_access.createFeedbackTable)
     })
 })
