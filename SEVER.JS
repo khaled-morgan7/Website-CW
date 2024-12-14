@@ -3,9 +3,39 @@ server.use(express.json()) //bdl using body parser
 const express = require('express')
 const db_access = require('./bd.js')
 const db = db_access.db
+const express = require('express')                                      //library for java 
+const cors = require('cors');                                          //connect between fornt and back end 
+const db_access = require('./bd.js')                                  //
+const jwt = require('jsonwebtoken')                                  // generate token for the admin
+const bcrypt = require('bcrypt');                                   // hashing 
+const db = db_access.db                                            //
+const cookieParser = require('cookie-parser');                    // generate cookies
 const server = express()
 const port = 3000
 server.use(express.json()) // bdl using body parser 
+const secret_key = 'poiuytrewqlkjhgfdsamnbvcxz'                 // encrypt the hash 
+const port = 4000
+server.use(cors({
+    origin:"http://localhost:3000",                           // http for react( fornt end)
+    credentials:true
+}))
+server.use(express.json())                                  // bdl using body parser 
+server.use(cookieParser())
+const generateToken = (id, isAdmin) => {
+    return jwt.sign({ id, isAdmin }, secret_key, { expiresIn: '24h' })
+}
+const verifyToken = (req, res, next) => {
+    const token = req.cookies.authToken
+    if (!token)
+        return res.status(401).send('unauthorized')
+    jwt.verify(token, secret_key, (err, details) => {
+        if (err)
+            return res.status(403).send('invalid or expired token')
+        req.userDetails = details
+
+        next()
+    })
+}
 
 // const isADMIN = req.body.isADMIN
 // const query = `INSERT INTO USER (NAME, EMAIL, PASS, ISADMIN) VALUES ('${name}', '${email}', '${password}', 0)`
@@ -19,10 +49,14 @@ server.post('/user/register', (req, res) => {
     const query=`INSERT INTO USER (NAME,EMAIL,PASSWORD,ISADMIN) VALUES ('${name}','${email}','${password}',0)`
     const pass = req.body.pass
      const query = `INSERT INTO USER (NAME, EMAIL, PASS, ISADMIN) VALUES ('${name}', '${email}', '${pass}', 0)` 
+    const name = req.body.name;
+    const email = req.body.email;
+    const pass = req.body.pass;
 
     // console.log(query)
     db.run(query, (err) => {
         if (err){
+    bcrypt.hash(pass, 10, (err, hashedPassword) => {
         if (err) {
             console.log(err.message)
             return res.status(401).send(err)}
@@ -35,6 +69,22 @@ server.post('/user/register', (req, res) => {
             return res.status(200).send(`registration successful`)
     })
 })
+            return res.status(500).send('Error hashing password');
+        }
+
+        // Query to insert the new user
+        const query = `INSERT INTO USER (NAME, EMAIL, PASS, ISADMIN) VALUES (?, ?, ?, ?)`;
+
+        // Execute the query
+        db.run(query, [name, email, hashedPassword, 0], (err) => {
+            if (err) {
+                return res.status(401).send(err.message);
+            } else {
+                return res.status(200).send('Registration successful');
+            }
+        });
+    });
+});
 
 // text must be in a '' like email and if passowrd wanted to be a text
 // text must be in a '' like email and if password wanted to be a text
@@ -54,10 +104,45 @@ server.post('/user/login', (req, res) => {
         else
             return res.status(200).send(`login successfull`)
             return res.status(200).send(`login successful`)
+    const password = req.body.pass
+    db.get(`SELECT * FROM USER WHERE EMAIL = ?`, [email], (err, row) => {
+        if (err || !row) {
+            return res.status(401).send('Wrong email or password')
+        }
+
+        // Compare the provided password with the hashed password in the database
+        bcrypt.compare(password, row.PASS, (err, isMatch) => {
+            if (err) {
+                return res.status(500).send('Error comparing password')
+            }
+
+            if (!isMatch) {
+                return res.status(401).send('Invalid credentials')
+            } else {
+                // Generate JWT token on successful login
+                const userID = row.ID
+                const isAdmin = row.ISADMIN
+                const token = generateToken(userID, isAdmin)
+
+                // Send token as a cookie to the client for authentication
+                res.cookie('authToken', token, {
+                    httpOnly: true,
+                    sameSite: 'none',
+                    secure: true,
+                    expiresIn: '1h'
+                })
+
+                return res.status(200).json({ id: userID, admin: isAdmin })
+            }
+        })
     })
 })
 
 server.get('/users', (req, res) => {
+server.get('/users',verifyToken, (req, res) => {
+    const isAdmin = req.userDetails.isAdmin;
+    if (isAdmin !== 1)
+        return res.status(403).send("you are not an admin")
     const query = `SELECT * FROM USER`;
     db.all(query, (err, rows) => {
         if (err) {
@@ -70,6 +155,10 @@ server.get('/users', (req, res) => {
 });
 
 server.get('/user/email', (req, res) => {
+server.get('/user/email',verifyToken, (req, res) => {
+    const isAdmin = req.userDetails.isAdmin;
+    if (isAdmin !== 1)
+        return res.status(403).send("you are not an admin")
     const email = req.query.email;  // Email passed as a query parameter
     const query = `SELECT * FROM USER WHERE EMAIL = '${email}'`;
     db.get(query, (err, row) => {
@@ -101,6 +190,14 @@ server.put('/user/profile', (req, res) => {
 });
 
 server.delete('/tickets/:id', (req, res) => {
+// LET A NEW STRING TO BE READABLE (query)
+// parseInt change string to int
+// base 10
+
+server.delete('/tickets/:id',verifyToken, (req, res) => {
+    const isAdmin = req.userDetails.isAdmin;
+    if (isAdmin !== 1)
+        return res.status(403).send("you are not an admin")
     const query = `DELETE FROM TICKET WHERE ID = ${req.params.id}`;
     db.run(query, (err) => {
         if (err) {
@@ -113,6 +210,11 @@ server.delete('/tickets/:id', (req, res) => {
 });
 
 server.post(`/ticket/add`, (req, res) => {
+server.post(`/ticket/add`,verifyToken, (req, res) => {
+    const isAdmin = req.userDetails.isAdmin;
+    if (isAdmin !== 1)
+        return res.status(403).send("you are not an admin")
+
     const origin = req.body.origin
     const destination = req.body.destination
     const date = req.body.date
@@ -129,6 +231,13 @@ server.post(`/ticket/add`, (req, res) => {
     })
 })
 server.get(`/ticket`, (req, res) => {
+
+// db.all is to return all data 
+// db.get is to return something unique
+server.get(`/ticket`,verifyToken, (req, res) => {
+    const isAdmin = req.userDetails.isAdmin;
+    if (isAdmin !== 1)
+        return res.status(403).send("you are not an admin")
     const query = `SELECT * FROM TICKET`
     db.all(query, (err, rows) => {
         if (err) {
@@ -206,6 +315,10 @@ server.post('/booking', (req, res) => {
 });
 
 server.get('/bookings', (req, res) => {
+server.get('/bookings',verifyToken,(req, res) => {
+    const isAdmin = req.userDetails.isAdmin;
+    if (isAdmin !== 1)
+        return res.status(403).send("you are not an admin")
     const query = `SELECT * FROM BOOKINGS`; // Query to fetch all bookings
 
     db.all(query, (err, rows) => {
@@ -232,6 +345,10 @@ server.get('/bookings/:id', (req, res) => {
 });
 
 server.delete('/bookings/:id', (req, res) => {
+server.delete('/bookings/:id',verifyToken, (req, res) => {
+    const isAdmin = req.userDetails.isAdmin;
+    if (isAdmin !== 1)
+        return res.status(403).send("you are not an admin")
     const bookingID = req.params.id;
     const query = `DELETE FROM BOOKINGS WHERE ID = ${bookingID}`;
     db.run(query, (err) => {
@@ -259,6 +376,10 @@ server.post('/feedback', (req, res) => {
 });
 
 server.get('/feedback', (req, res) => {
+server.get('/feedback',verifyToken, (req, res) => {
+    const isAdmin = req.userDetails.isAdmin;
+    if (isAdmin !== 1)
+        return res.status(403).send("you are not an admin")
     db.all( `SELECT * FROM FEEDBACK`,(err, row) => {
         if (err)
             return res.status(500).send('Error retrieving feedback');
@@ -270,6 +391,10 @@ server.get('/feedback', (req, res) => {
     });
 
 server.delete('/feedback/:id', (req, res) => {
+server.delete('/feedback/:id',verifyToken, (req, res) => {
+    const isAdmin = req.userDetails.isAdmin;
+    if (isAdmin !== 1)
+        return res.status(403).send("you are not an admin")
     const feedbackID = req.params.id; // Extract feedback ID from the URL parameter
     const query = `DELETE FROM FEEDBACK WHERE ID = ${feedbackID}`; // SQL query to delete the feedback
 
@@ -293,4 +418,5 @@ server.listen(port, () => {
         db.exec(db_access.createBookingTable)
         db.exec(db_access.createFeedbackTable)
     })
+})
 })
